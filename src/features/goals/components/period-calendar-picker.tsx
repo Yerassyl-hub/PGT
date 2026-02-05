@@ -213,42 +213,42 @@ export function PeriodCalendarPicker({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-start gap-2 bg-zinc-50 border-zinc-200 text-zinc-900 hover:bg-zinc-100 text-left"
+          className="w-full justify-start gap-2 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-left"
         >
-          <Calendar className="h-4 w-4 text-zinc-500 shrink-0" />
+          <Calendar className="h-4 w-4 text-zinc-500 dark:text-zinc-400 shrink-0" />
           <span className="truncate">{displayLabel}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 bg-white border-zinc-200" align="start">
+      <PopoverContent className="w-auto p-0 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700" align="start">
         <div className="p-4">
           {/* Preset selection */}
           <div className="flex flex-col gap-1 mb-4">
-            <p className="text-xs text-zinc-500 mb-1">По умолчанию:</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">По умолчанию:</p>
             {CATEGORY_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 onClick={() => handlePresetSelect(option.value)}
                 className={`text-left px-3 py-2 rounded-md text-sm transition-colors ${
                   category === option.value
-                    ? 'bg-emerald-100 text-emerald-700 font-medium'
-                    : 'text-zinc-700 hover:bg-zinc-100'
+                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-medium'
+                    : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                 }`}
               >
                 {option.label}
               </button>
             ))}
             {category === 'custom' && (
-              <div className="px-3 py-2 rounded-md text-sm bg-violet-100 text-violet-700 font-medium">
+              <div className="px-3 py-2 rounded-md text-sm bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-400 font-medium">
                 Свой период
               </div>
             )}
           </div>
 
           {/* Divider */}
-          <div className="border-t border-zinc-200 my-3" />
+          <div className="border-t border-zinc-200 dark:border-zinc-700 my-3" />
 
           {/* Manual selection hint */}
-          <div className="text-xs text-zinc-500 mb-3 text-center">
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-3 text-center">
             {selectingStart ? 'Или выберите начало периода' : 'Выберите конец периода'}
           </div>
 
@@ -256,18 +256,18 @@ export function PeriodCalendarPicker({
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={prevMonth}
-              className="p-1 hover:bg-zinc-100 rounded-md transition-colors"
+              className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors"
             >
-              <ChevronLeft className="h-5 w-5 text-zinc-600" />
+              <ChevronLeft className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
             </button>
-            <span className="text-red-500 font-bold tracking-wide">
+            <span className="text-red-500 dark:text-red-400 font-bold tracking-wide">
               {MONTHS_RU[viewDate.getMonth()]}
             </span>
             <button
               onClick={nextMonth}
-              className="p-1 hover:bg-zinc-100 rounded-md transition-colors"
+              className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors"
             >
-              <ChevronRight className="h-5 w-5 text-zinc-600" />
+              <ChevronRight className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
             </button>
           </div>
 
@@ -276,7 +276,7 @@ export function PeriodCalendarPicker({
             {WEEKDAYS_RU.map((day, i) => (
               <div
                 key={i}
-                className="text-center text-sm font-medium text-zinc-500 w-9 h-6 flex items-center justify-center"
+                className="text-center text-sm font-medium text-zinc-500 dark:text-zinc-400 w-9 h-6 flex items-center justify-center"
               >
                 {day}
               </div>
@@ -303,7 +303,7 @@ export function PeriodCalendarPicker({
                   {/* Range highlight background */}
                   {inRange && isCurrentMonth && (
                     <div
-                      className={`absolute inset-0 ${category === 'custom' ? 'bg-violet-100' : 'bg-emerald-100'} ${
+                      className={`absolute inset-0 ${category === 'custom' ? 'bg-violet-100 dark:bg-violet-900/40' : 'bg-emerald-100 dark:bg-emerald-900/40'} ${
                         isFirst && !isSingle ? 'rounded-l-full' : ''
                       } ${isLast && !isSingle ? 'rounded-r-full' : ''} ${
                         isSingle ? 'rounded-full' : ''
@@ -319,8 +319,8 @@ export function PeriodCalendarPicker({
                         : isFirst || isLast
                         ? category === 'custom' ? 'bg-violet-500 text-white' : 'bg-emerald-500 text-white'
                         : isCurrentMonth
-                        ? 'text-zinc-900 hover:bg-zinc-200'
-                        : 'text-zinc-400'
+                        ? 'text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                        : 'text-zinc-400 dark:text-zinc-600'
                     }`}
                   >
                     {date.getDate()}
@@ -331,7 +331,7 @@ export function PeriodCalendarPicker({
           </div>
 
           {/* Selected range info */}
-          <div className="mt-4 pt-3 border-t border-zinc-200 text-sm text-zinc-600 text-center">
+          <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-700 text-sm text-zinc-600 dark:text-zinc-400 text-center">
             Период: {formatDateRange(periodStart, periodEnd)}
           </div>
         </div>

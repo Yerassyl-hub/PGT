@@ -48,14 +48,16 @@ const createInitialForm = (): GoalFormData => {
 export function GoalsHeader({ onAdd, stats }: GoalsHeaderProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<GoalFormData>(createInitialForm);
-  const [title, setTitle] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('goalsTitle') || 'Мои цели';
-    }
-    return 'Мои цели';
-  });
+  const [title, setTitle] = useState('Мои цели');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const savedTitle = localStorage.getItem('goalsTitle');
+    if (savedTitle) {
+      setTitle(savedTitle);
+    }
+  }, []);
 
   useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
