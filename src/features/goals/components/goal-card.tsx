@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { MoreHorizontal, Trash2, Edit2, Plus } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { MoreHorizontal, Trash2, Edit2, Plus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -85,6 +85,68 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
     return value.toString();
   };
 
+  // Format period for display next to title
+  const formatPeriodShort = (start: Date, end: Date): string => {
+    const formatDay = (d: Date) => d.getDate();
+    const formatMonth = (d: Date) => d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '');
+
+    const sameMonth = start.getMonth() === end.getMonth();
+    const sameDay = start.getDate() === end.getDate() && sameMonth && start.getFullYear() === end.getFullYear();
+
+    if (sameDay) {
+      return `${formatDay(start)} ${formatMonth(start)}`;
+    }
+    if (sameMonth) {
+      return `${formatDay(start)}-${formatDay(end)} ${formatMonth(end)}`;
+    }
+    return `${formatDay(start)} ${formatMonth(start)} - ${formatDay(end)} ${formatMonth(end)}`;
+  };
+
+  // Calculate remaining days if current date is within period
+  const deadlineInfo = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const start = new Date(goal.periodStart);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(goal.periodEnd);
+    end.setHours(23, 59, 59, 999);
+
+    // Check if current date is within the period
+    if (now < start || now > end) {
+      return null; // Period is in the future or past
+    }
+
+    // Calculate days remaining
+    const endDate = new Date(goal.periodEnd);
+    endDate.setHours(0, 0, 0, 0);
+    const diffTime = endDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Calculate percentage of time remaining
+    const totalTime = endDate.getTime() - start.getTime();
+    const remainingPercent = totalTime > 0 ? (diffTime / totalTime) * 100 : 0;
+
+    // Determine color based on remaining time percentage
+    let colorClass: string;
+    if (remainingPercent > 70) {
+      colorClass = 'text-emerald-600 dark:text-emerald-400'; // Green - plenty of time
+    } else if (remainingPercent >= 30) {
+      colorClass = 'text-amber-600 dark:text-amber-400'; // Yellow - medium
+    } else {
+      colorClass = 'text-red-600 dark:text-red-400'; // Red - urgent
+    }
+
+    let text: string;
+    if (diffDays === 0) text = 'Сегодня';
+    else if (diffDays === 1) text = '1 день';
+    else if (diffDays >= 2 && diffDays <= 4) text = `${diffDays} дня`;
+    else text = `${diffDays} дн.`;
+
+    return { text, colorClass };
+  }, [goal.periodStart, goal.periodEnd]);
+
   const handleIncrement = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isCompleted) {
@@ -96,14 +158,28 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
     <>
       <div className="bg-white dark:bg-zinc-800 rounded-2xl p-4 shadow-sm border border-zinc-100 dark:border-zinc-700">
         <div className="flex items-start gap-3">
-          <GoalIcon icon={goal.icon} color={goal.color} />
+          {/* Icon and deadline column */}
+          <div className="flex flex-col items-center gap-1">
+            <GoalIcon icon={goal.icon} color={goal.color} />
+            {deadlineInfo && (
+              <div className={`flex items-center gap-1 text-xs font-medium ${deadlineInfo.colorClass}`}>
+                <Clock className="h-3 w-3" />
+                <span>{deadlineInfo.text}</span>
+              </div>
+            )}
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-zinc-900 dark:text-white text-base">
-                  {goal.title}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-zinc-900 dark:text-white text-base">
+                    {goal.title}
+                  </h3>
+                  <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    {formatPeriodShort(goal.periodStart, goal.periodEnd)}
+                  </span>
+                </div>
               </div>
 
               <DropdownMenu>

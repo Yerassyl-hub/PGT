@@ -45,7 +45,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-72 p-3 bg-zinc-900 border-zinc-700"
+        className="w-72 p-3 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700"
         align="start"
       >
         <div className="grid grid-cols-6 gap-2">
@@ -60,7 +60,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
                 className={`h-10 w-10 flex items-center justify-center rounded-lg transition-colors ${
                   isSelected
                     ? 'bg-emerald-500 text-white'
-                    : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
                 }`}
               >
                 <IconComponent className="h-5 w-5" />
