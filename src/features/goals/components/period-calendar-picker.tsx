@@ -8,14 +8,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { GoalCategory } from '../types';
-import { CATEGORY_OPTIONS, CATEGORY_LABELS } from '../constants';
 
 interface PeriodCalendarPickerProps {
-  category: GoalCategory;
   periodStart: Date;
   periodEnd: Date;
-  onCategoryChange: (value: GoalCategory) => void;
   onPeriodChange: (start: Date, end: Date) => void;
 }
 
@@ -52,42 +48,9 @@ function formatDateRange(start: Date, end: Date): string {
   return `${formatDate(start)} - ${formatDate(end)}`;
 }
 
-function getDayRange(): { start: Date; end: Date } {
-  const today = new Date();
-  const start = new Date(today);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(today);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
-
-function getWeekRange(): { start: Date; end: Date } {
-  const today = new Date();
-  const day = today.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const start = new Date(today);
-  start.setDate(today.getDate() + diff);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
-
-function getMonthRange(): { start: Date; end: Date } {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
-
 export function PeriodCalendarPicker({
-  category,
   periodStart,
   periodEnd,
-  onCategoryChange,
   onPeriodChange
 }: PeriodCalendarPickerProps) {
   const [open, setOpen] = useState(false);
@@ -147,31 +110,6 @@ export function PeriodCalendarPicker({
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
   };
 
-  // Handle preset selection - auto-set period
-  const handlePresetSelect = (preset: GoalCategory) => {
-    let range: { start: Date; end: Date };
-
-    switch (preset) {
-      case 'daily':
-        range = getDayRange();
-        break;
-      case 'weekly':
-        range = getWeekRange();
-        break;
-      case 'monthly':
-        range = getMonthRange();
-        break;
-      default:
-        return;
-    }
-
-    onCategoryChange(preset);
-    onPeriodChange(range.start, range.end);
-    setTempStart(null);
-    setSelectingStart(true);
-  };
-
-  // Handle manual date selection - sets category to custom
   const handleDayClick = (date: Date) => {
     if (selectingStart) {
       setTempStart(date);
@@ -186,8 +124,6 @@ export function PeriodCalendarPicker({
         finalEnd = start;
       }
 
-      // Set to custom when manually selecting dates
-      onCategoryChange('custom');
       onPeriodChange(finalStart, finalEnd);
       setTempStart(null);
       setSelectingStart(true);
@@ -204,9 +140,7 @@ export function PeriodCalendarPicker({
     return isSameDay(date, periodEnd);
   };
 
-  const displayLabel = category === 'custom'
-    ? `Свой период: ${formatDateRange(periodStart, periodEnd)}`
-    : `${CATEGORY_LABELS[category]}: ${formatDateRange(periodStart, periodEnd)}`;
+  const displayLabel = `Период: ${formatDateRange(periodStart, periodEnd)}`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -221,35 +155,9 @@ export function PeriodCalendarPicker({
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700" align="start">
         <div className="p-4">
-          {/* Preset selection */}
-          <div className="flex flex-col gap-1 mb-4">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">По умолчанию:</p>
-            {CATEGORY_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => handlePresetSelect(option.value)}
-                className={`text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                  category === option.value
-                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-medium'
-                    : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-            {category === 'custom' && (
-              <div className="px-3 py-2 rounded-md text-sm bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-400 font-medium">
-                Свой период
-              </div>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-zinc-200 dark:border-zinc-700 my-3" />
-
-          {/* Manual selection hint */}
+          {/* Selection hint */}
           <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-3 text-center">
-            {selectingStart ? 'Или выберите начало периода' : 'Выберите конец периода'}
+            {selectingStart ? 'Выберите начало периода' : 'Выберите конец периода'}
           </div>
 
           {/* Calendar header */}
@@ -303,7 +211,7 @@ export function PeriodCalendarPicker({
                   {/* Range highlight background */}
                   {inRange && isCurrentMonth && (
                     <div
-                      className={`absolute inset-0 ${category === 'custom' ? 'bg-violet-100 dark:bg-violet-900/40' : 'bg-emerald-100 dark:bg-emerald-900/40'} ${
+                      className={`absolute inset-0 bg-emerald-100 dark:bg-emerald-900/40 ${
                         isFirst && !isSingle ? 'rounded-l-full' : ''
                       } ${isLast && !isSingle ? 'rounded-r-full' : ''} ${
                         isSingle ? 'rounded-full' : ''
@@ -317,7 +225,7 @@ export function PeriodCalendarPicker({
                       isToday
                         ? 'bg-red-500 text-white'
                         : isFirst || isLast
-                        ? category === 'custom' ? 'bg-violet-500 text-white' : 'bg-emerald-500 text-white'
+                        ? 'bg-emerald-500 text-white'
                         : isCurrentMonth
                         ? 'text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                         : 'text-zinc-400 dark:text-zinc-600'

@@ -243,10 +243,8 @@ export function GoalsHeader({ onAdd, stats }: GoalsHeaderProps) {
               <div className="space-y-2">
                 <Label className="text-zinc-700 dark:text-zinc-300">Период</Label>
                 <PeriodCalendarPicker
-                  category={form.category}
                   periodStart={form.periodStart}
                   periodEnd={form.periodEnd}
-                  onCategoryChange={(v) => updateForm('category', v)}
                   onPeriodChange={handlePeriodChange}
                 />
               </div>

@@ -400,10 +400,8 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
             <div className="space-y-2">
               <Label className="text-zinc-700 dark:text-zinc-300">Период</Label>
               <PeriodCalendarPicker
-                category={editForm.category}
                 periodStart={editForm.periodStart}
                 periodEnd={editForm.periodEnd}
-                onCategoryChange={(v) => updateEditForm('category', v)}
                 onPeriodChange={handleEditPeriodChange}
               />
             </div>
