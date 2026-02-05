@@ -87,11 +87,43 @@ export function GoalsHeader({ onAdd, stats }: GoalsHeaderProps) {
     setOpen(false);
   };
 
+  // Calculate days between two dates
+  const calculateDays = (start: Date, end: Date): number => {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(end);
+    e.setHours(0, 0, 0, 0);
+    return Math.max(1, Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  };
+
+  // Calculate increment based on target and days
+  const calculateIncrement = (target: number, start: Date, end: Date): number => {
+    const days = calculateDays(start, end);
+    return Math.ceil(target / days);
+  };
+
   const updateForm = <K extends keyof GoalFormData>(
     key: K,
     value: GoalFormData[K]
   ) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      const updated = { ...prev, [key]: value };
+      // Auto-calculate increment when target changes
+      if (key === 'targetValue') {
+        updated.incrementAmount = calculateIncrement(value as number, prev.periodStart, prev.periodEnd);
+      }
+      return updated;
+    });
+  };
+
+  // Handle period change and auto-calculate increment
+  const handlePeriodChange = (start: Date, end: Date) => {
+    setForm((prev) => ({
+      ...prev,
+      periodStart: start,
+      periodEnd: end,
+      incrementAmount: calculateIncrement(prev.targetValue, start, end),
+    }));
   };
 
   return (
@@ -215,9 +247,7 @@ export function GoalsHeader({ onAdd, stats }: GoalsHeaderProps) {
                   periodStart={form.periodStart}
                   periodEnd={form.periodEnd}
                   onCategoryChange={(v) => updateForm('category', v)}
-                  onPeriodChange={(start, end) => {
-                    setForm((prev) => ({ ...prev, periodStart: start, periodEnd: end }));
-                  }}
+                  onPeriodChange={handlePeriodChange}
                 />
               </div>
 

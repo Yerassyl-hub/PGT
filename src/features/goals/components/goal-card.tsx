@@ -55,11 +55,43 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
     setEditOpen(false);
   };
 
+  // Calculate days between two dates
+  const calculateDays = (start: Date, end: Date): number => {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(end);
+    e.setHours(0, 0, 0, 0);
+    return Math.max(1, Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  };
+
+  // Calculate increment based on target and days
+  const calculateIncrement = (target: number, start: Date, end: Date): number => {
+    const days = calculateDays(start, end);
+    return Math.ceil(target / days);
+  };
+
   const updateEditForm = <K extends keyof GoalFormData>(
     key: K,
     value: GoalFormData[K]
   ) => {
-    setEditForm((prev) => ({ ...prev, [key]: value }));
+    setEditForm((prev) => {
+      const updated = { ...prev, [key]: value };
+      // Auto-calculate increment when target changes
+      if (key === 'targetValue') {
+        updated.incrementAmount = calculateIncrement(value as number, prev.periodStart, prev.periodEnd);
+      }
+      return updated;
+    });
+  };
+
+  // Handle period change and auto-calculate increment
+  const handleEditPeriodChange = (start: Date, end: Date) => {
+    setEditForm((prev) => ({
+      ...prev,
+      periodStart: start,
+      periodEnd: end,
+      incrementAmount: calculateIncrement(prev.targetValue, start, end),
+    }));
   };
 
   const openEditDialog = () => {
@@ -78,12 +110,42 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
     setEditOpen(true);
   };
 
-  const formatValue = (value: number): string => {
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}k`;
+  // Calculate daily minimum based on remaining target and remaining days
+  const dailyInfo = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const start = new Date(goal.periodStart);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(goal.periodEnd);
+    end.setHours(0, 0, 0, 0);
+
+    // Calculate total days in period
+    const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+
+    // Calculate remaining value
+    const remainingValue = Math.max(0, goal.targetValue - goal.currentValue);
+
+    // Calculate remaining days (including today)
+    let remainingDays: number;
+    if (now < start) {
+      remainingDays = totalDays; // Period hasn't started yet
+    } else if (now > end) {
+      remainingDays = 0; // Period has ended
+    } else {
+      remainingDays = Math.max(1, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     }
-    return value.toString();
-  };
+
+    // Calculate daily minimum (round up to ensure we hit the target)
+    const dailyMinimum = remainingDays > 0 ? Math.ceil(remainingValue / remainingDays) : remainingValue;
+
+    return {
+      dailyMinimum,
+      remainingDays,
+      totalDays,
+    };
+  }, [goal.periodStart, goal.periodEnd, goal.targetValue, goal.currentValue]);
 
   // Format period for display next to title
   const formatPeriodShort = (start: Date, end: Date): string => {
@@ -150,7 +212,9 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
   const handleIncrement = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isCompleted) {
-      onIncrement(goal.id, goal.incrementAmount);
+      // Use calculated daily minimum, or fall back to incrementAmount if goal is complete
+      const incrementValue = dailyInfo.dailyMinimum > 0 ? dailyInfo.dailyMinimum : goal.incrementAmount;
+      onIncrement(goal.id, incrementValue);
     }
   };
 
@@ -218,15 +282,22 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
               <div className="flex items-baseline justify-between mb-2">
                 <div className="flex items-baseline gap-1">
                   <span className="text-2xl font-bold text-zinc-900 dark:text-white">
-                    {formatValue(goal.currentValue)}
+                    {goal.currentValue}
                   </span>
                   <span className="text-sm text-zinc-400">
-                    / {formatValue(goal.targetValue)} {goal.unit}
+                    / {goal.targetValue} {goal.unit}
                   </span>
                 </div>
-                <span className="text-sm font-semibold text-emerald-500">
-                  {Math.round(progress)}%
-                </span>
+                <div className="flex items-center gap-2">
+                  {dailyInfo.dailyMinimum > 0 && !isCompleted && (
+                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                      мин {dailyInfo.dailyMinimum}/день
+                    </span>
+                  )}
+                  <span className="text-sm font-semibold text-emerald-500">
+                    {Math.round(progress)}%
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
@@ -333,9 +404,7 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
                 periodStart={editForm.periodStart}
                 periodEnd={editForm.periodEnd}
                 onCategoryChange={(v) => updateEditForm('category', v)}
-                onPeriodChange={(start, end) => {
-                  setEditForm((prev) => ({ ...prev, periodStart: start, periodEnd: end }));
-                }}
+                onPeriodChange={handleEditPeriodChange}
               />
             </div>
 
