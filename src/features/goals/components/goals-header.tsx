@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GoalFormData, GoalIconType, GoalStats } from '../types';
+import { GoalFormData, GoalStats } from '../types';
 import { COLOR_OPTIONS } from '../constants';
 import { PeriodCalendarPicker } from './period-calendar-picker';
 import { IconPicker } from './icon-picker';
@@ -20,6 +20,8 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 interface GoalsHeaderProps {
   onAdd: (data: GoalFormData) => void;
+  onTitleSave: (title: string) => void;
+  title: string;
   stats: GoalStats;
 }
 
@@ -45,19 +47,12 @@ const createInitialForm = (): GoalFormData => {
   };
 };
 
-export function GoalsHeader({ onAdd, stats }: GoalsHeaderProps) {
+export function GoalsHeader({ onAdd, onTitleSave, title, stats }: GoalsHeaderProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<GoalFormData>(createInitialForm);
-  const [title, setTitle] = useState('Мои цели');
+  const [titleDraft, setTitleDraft] = useState(title);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const savedTitle = localStorage.getItem('goalsTitle');
-    if (savedTitle) {
-      setTitle(savedTitle);
-    }
-  }, []);
 
   useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
@@ -67,10 +62,14 @@ export function GoalsHeader({ onAdd, stats }: GoalsHeaderProps) {
   }, [isEditingTitle]);
 
   const handleTitleSave = () => {
-    const newTitle = title.trim() || 'Мои цели';
-    setTitle(newTitle);
-    localStorage.setItem('goalsTitle', newTitle);
+    const newTitle = titleDraft.trim() || 'Мои цели';
+    onTitleSave(newTitle);
     setIsEditingTitle(false);
+  };
+
+  const handleStartEditingTitle = () => {
+    setTitleDraft(title);
+    setIsEditingTitle(true);
   };
 
   const today = new Date();
@@ -133,13 +132,13 @@ export function GoalsHeader({ onAdd, stats }: GoalsHeaderProps) {
           <input
             ref={titleInputRef}
             type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
             onBlur={handleTitleSave}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleTitleSave();
               if (e.key === 'Escape') {
-                setTitle(localStorage.getItem('goalsTitle') || 'Мои цели');
+                setTitleDraft(title);
                 setIsEditingTitle(false);
               }
             }}
@@ -147,7 +146,7 @@ export function GoalsHeader({ onAdd, stats }: GoalsHeaderProps) {
           />
         ) : (
           <h1
-            onClick={() => setIsEditingTitle(true)}
+            onClick={handleStartEditingTitle}
             className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
             {title}

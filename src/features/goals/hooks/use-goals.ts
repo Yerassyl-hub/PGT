@@ -2,7 +2,18 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Goal, GoalFormData, GoalStats, GoalFilters } from '../types';
-import { INITIAL_GOALS } from '../constants';
+import {
+  DEFAULT_GOALS_TITLE,
+  addGoalToFirestore,
+  deleteGoalFromFirestore,
+  incrementGoalInFirestore,
+  resetGoalsPeriodInFirestore,
+  subscribeGoals,
+  subscribeGoalsTitle,
+  updateGoalInFirestore,
+  updateGoalProgressInFirestore,
+  updateGoalsTitleInFirestore,
+} from '../lib/firestore-goals';
 
 const DEFAULT_FILTERS: GoalFilters = {
   categories: [],
@@ -46,42 +57,78 @@ function shouldResetGoal(goal: Goal): boolean {
 }
 
 export function useGoals() {
-  const [goals, setGoals] = useState<Goal[]>(INITIAL_GOALS);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [title, setTitle] = useState(DEFAULT_GOALS_TITLE);
+  const [isGoalsLoading, setIsGoalsLoading] = useState(true);
+  const [isTitleLoading, setIsTitleLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<GoalFilters>(DEFAULT_FILTERS);
 
-  // Check and reset goals when period ends
   useEffect(() => {
-    const checkAndResetGoals = () => {
-      setGoals((prevGoals) => {
-        let hasChanges = false;
-        const updatedGoals = prevGoals.map((goal) => {
-          if (shouldResetGoal(goal)) {
-            hasChanges = true;
-            const newStart = getNextPeriodStart(goal.periodEnd);
-            // Safe to cast since shouldResetGoal returns false for 'custom'
-            const newEnd = getNextPeriodEnd(goal.category as 'daily' | 'weekly' | 'monthly', newStart);
-            return {
-              ...goal,
-              currentValue: 0,
-              periodStart: newStart,
-              periodEnd: newEnd,
-              lastResetAt: new Date(),
-              updatedAt: new Date(),
-            };
-          }
-          return goal;
-        });
-        return hasChanges ? updatedGoals : prevGoals;
-      });
+    const unsubscribeGoals = subscribeGoals(
+      (nextGoals) => {
+        setGoals(nextGoals);
+        setIsGoalsLoading(false);
+      },
+      (snapshotError) => {
+        setError(snapshotError.message);
+        setIsGoalsLoading(false);
+      }
+    );
+
+    const unsubscribeTitle = subscribeGoalsTitle(
+      (nextTitle) => {
+        setTitle(nextTitle);
+        setIsTitleLoading(false);
+      },
+      (snapshotError) => {
+        setError(snapshotError.message);
+        setIsTitleLoading(false);
+      }
+    );
+
+    return () => {
+      unsubscribeGoals();
+      unsubscribeTitle();
     };
-
-    // Check immediately
-    checkAndResetGoals();
-
-    // Check every minute
-    const interval = setInterval(checkAndResetGoals, 60000);
-    return () => clearInterval(interval);
   }, []);
+
+  const checkAndResetGoals = useCallback(async () => {
+    const updates = goals
+      .filter((goal) => shouldResetGoal(goal))
+      .map((goal) => {
+        const newStart = getNextPeriodStart(goal.periodEnd);
+        return {
+          id: goal.id,
+          periodStart: newStart,
+          periodEnd: getNextPeriodEnd(goal.category as 'daily' | 'weekly' | 'monthly', newStart),
+        };
+      });
+
+    if (updates.length === 0) {
+      return;
+    }
+
+    try {
+      await resetGoalsPeriodInFirestore(updates);
+    } catch (resetError) {
+      console.error('Failed to reset goal period', resetError);
+    }
+  }, [goals]);
+
+  useEffect(() => {
+    if (isGoalsLoading || goals.length === 0) {
+      return;
+    }
+
+    void checkAndResetGoals();
+
+    const interval = setInterval(() => {
+      void checkAndResetGoals();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [goals, isGoalsLoading, checkAndResetGoals]);
 
   const filteredGoals = useMemo(() => {
     let result = [...goals];
@@ -129,67 +176,86 @@ export function useGoals() {
     };
   }, [goals]);
 
-  const addGoal = useCallback((formData: GoalFormData) => {
-    const now = new Date();
-    const newGoal: Goal = {
-      ...formData,
-      id: Date.now().toString(),
-      currentValue: 0,
-      lastResetAt: now,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setGoals((prev) => [...prev, newGoal]);
+  const addGoal = useCallback(async (formData: GoalFormData) => {
+    try {
+      await addGoalToFirestore(formData);
+    } catch (saveError) {
+      console.error('Failed to add goal', saveError);
+      setError('Не удалось сохранить цель');
+    }
   }, []);
 
-  const updateGoalProgress = useCallback((id: string, value: number) => {
-    setGoals((prev) =>
-      prev.map((goal) =>
-        goal.id === id
-          ? { ...goal, currentValue: value, updatedAt: new Date() }
-          : goal
-      )
-    );
+  const updateGoalProgress = useCallback(async (id: string, value: number) => {
+    try {
+      await updateGoalProgressInFirestore(id, Math.max(0, value));
+    } catch (saveError) {
+      console.error('Failed to update goal progress', saveError);
+      setError('Не удалось обновить прогресс');
+    }
   }, []);
 
-  const deleteGoal = useCallback((id: string) => {
-    setGoals((prev) => prev.filter((goal) => goal.id !== id));
+  const deleteGoal = useCallback(async (id: string) => {
+    try {
+      await deleteGoalFromFirestore(id);
+    } catch (saveError) {
+      console.error('Failed to delete goal', saveError);
+      setError('Не удалось удалить цель');
+    }
   }, []);
 
-  const updateGoal = useCallback((id: string, formData: GoalFormData) => {
-    setGoals((prev) =>
-      prev.map((goal) =>
-        goal.id === id
-          ? { ...goal, ...formData, updatedAt: new Date() }
-          : goal
-      )
-    );
+  const updateGoal = useCallback(async (id: string, formData: GoalFormData) => {
+    try {
+      await updateGoalInFirestore(id, formData);
+    } catch (saveError) {
+      console.error('Failed to update goal', saveError);
+      setError('Не удалось обновить цель');
+    }
   }, []);
 
-  const incrementGoal = useCallback((id: string, amount: number = 1) => {
-    setGoals((prev) =>
-      prev.map((goal) =>
-        goal.id === id
-          ? {
-              ...goal,
-              currentValue: Math.min(goal.currentValue + amount, goal.targetValue),
-              updatedAt: new Date(),
-            }
-          : goal
-      )
-    );
+  const incrementGoal = useCallback(
+    async (id: string, amount: number = 1) => {
+      const goal = goals.find((item) => item.id === id);
+
+      if (!goal) {
+        return;
+      }
+
+      try {
+        await incrementGoalInFirestore(id, amount, goal.currentValue, goal.targetValue);
+      } catch (saveError) {
+        console.error('Failed to increment goal', saveError);
+        setError('Не удалось обновить прогресс');
+      }
+    },
+    [goals]
+  );
+
+  const updateTitle = useCallback(async (nextTitle: string) => {
+    const normalizedTitle = nextTitle.trim() || DEFAULT_GOALS_TITLE;
+    setTitle(normalizedTitle);
+
+    try {
+      await updateGoalsTitleInFirestore(normalizedTitle);
+    } catch (saveError) {
+      console.error('Failed to update goals title', saveError);
+      setError('Не удалось сохранить название');
+    }
   }, []);
 
   return {
     goals: filteredGoals,
     allGoals: goals,
+    title,
     filters,
     setFilters,
     stats,
+    isLoading: isGoalsLoading || isTitleLoading,
+    error,
     addGoal,
     updateGoal,
     updateGoalProgress,
     deleteGoal,
     incrementGoal,
+    updateTitle,
   };
 }

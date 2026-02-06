@@ -1,6 +1,7 @@
 'use client';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Spinner } from '@/components/ui/spinner';
 import {
   GoalsHeader,
   GoalsFilter,
@@ -14,10 +15,13 @@ export default function HomePage() {
     filters,
     setFilters,
     stats,
+    title,
+    isLoading,
     addGoal,
     updateGoal,
     incrementGoal,
     deleteGoal,
+    updateTitle,
   } = useGoals();
 
   return (
@@ -27,18 +31,24 @@ export default function HomePage() {
 
       {/* Content */}
       <div className="relative z-10 min-h-screen flex flex-col max-w-2xl mx-auto">
-        <GoalsHeader onAdd={addGoal} stats={stats} />
+        <GoalsHeader onAdd={addGoal} onTitleSave={updateTitle} title={title} stats={stats} />
 
         <main className="flex-1 px-4 sm:px-6 pb-6 space-y-4 sm:space-y-6">
           <GoalsFilter filters={filters} onChange={setFilters} />
 
           <ScrollArea className="flex-1">
-            <GoalsList
-              goals={goals}
-              onIncrement={incrementGoal}
-              onDelete={deleteGoal}
-              onEdit={updateGoal}
-            />
+            {isLoading ? (
+              <div className="flex min-h-[340px] items-center justify-center">
+                <Spinner className="size-8 text-emerald-500" />
+              </div>
+            ) : (
+              <GoalsList
+                goals={goals}
+                onIncrement={incrementGoal}
+                onDelete={deleteGoal}
+                onEdit={updateGoal}
+              />
+            )}
           </ScrollArea>
         </main>
       </div>

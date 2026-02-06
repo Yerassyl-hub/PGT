@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Goals Tracker (Next.js + Firebase Firestore)
 
-## Getting Started
+This app stores goals directly in Firestore from the browser (no custom backend, no auth UI).  
+Data is shared for one-user usage across all devices.
 
-First, run the development server:
+## Firestore data model (shared path)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Shared document path: `shared/goals-app` (override with `NEXT_PUBLIC_FIREBASE_SHARED_PATH`)
+- Goals collection: `shared/goals-app/goals/{goalId}`
+- Shared title field: `shared/goals-app.title`
+
+## 1) Firebase setup
+
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/).
+2. Add a Web app in that project and copy the Firebase config values.
+3. Create Firestore Database (Native mode).
+4. Set Firestore Security Rules to this no-auth shared model:
+
+```txt
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /shared/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 2) Local environment variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create `.env.local` (do not commit it):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
 
-## Learn More
+# Optional
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=...
+NEXT_PUBLIC_FIREBASE_SHARED_PATH=shared/goals-app
+NEXT_PUBLIC_FIREBASE_FORCE_LONG_POLLING=false
+```
 
-To learn more about Next.js, take a look at the following resources:
+Notes:
+- Required by app: `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`.
+- Set `NEXT_PUBLIC_FIREBASE_FORCE_LONG_POLLING=true` for restrictive networks/proxies where default transport is unstable.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 3) Install and run
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 4) Validation commands
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run lint
+npm run build
+```
+
+## 5) Curl smoke test (write + read Firestore)
+
+Script: `scripts/firebase-smoke.sh`
+
+It writes a temporary goal to `shared/goals-app/goals/{id}`, reads it back, verifies content, and deletes it.
+
+Run with env loaded (either FIREBASE_* or NEXT_PUBLIC_FIREBASE_* vars are accepted):
+
+```bash
+source .env.local
+./scripts/firebase-smoke.sh
+```
+
+## 6) Deploy on Vercel
+
+1. Import repo into Vercel.
+2. Add all required `NEXT_PUBLIC_FIREBASE_*` env vars in Vercel Project Settings.
+3. Deploy.  
+   The app remains fully static/client-driven with Firestore as the only data layer.
