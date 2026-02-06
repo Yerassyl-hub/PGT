@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { MoreHorizontal, Trash2, Edit2, Plus, Clock } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { MoreHorizontal, Trash2, Edit2, Plus, Clock, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -32,6 +32,9 @@ interface GoalCardProps {
 
 export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [showIncrementInput, setShowIncrementInput] = useState(false);
+  const [incrementValue, setIncrementValue] = useState('');
+  const incrementInputRef = useRef<HTMLInputElement>(null);
   const [editForm, setEditForm] = useState<GoalFormData>({
     title: goal.title,
     subtitle: goal.subtitle,
@@ -209,12 +212,42 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
     return { text, colorClass };
   }, [goal.periodStart, goal.periodEnd]);
 
-  const handleIncrement = (e: React.MouseEvent) => {
+  // Focus input when shown
+  useEffect(() => {
+    if (showIncrementInput && incrementInputRef.current) {
+      incrementInputRef.current.focus();
+      incrementInputRef.current.select();
+    }
+  }, [showIncrementInput]);
+
+  const handlePlusClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isCompleted) {
-      // Use calculated daily minimum, or fall back to incrementAmount if goal is complete
-      const incrementValue = dailyInfo.dailyMinimum > 0 ? dailyInfo.dailyMinimum : goal.incrementAmount;
-      onIncrement(goal.id, incrementValue);
+      const defaultValue = dailyInfo.dailyMinimum > 0 ? dailyInfo.dailyMinimum : goal.incrementAmount;
+      setIncrementValue(defaultValue.toString());
+      setShowIncrementInput(true);
+    }
+  };
+
+  const handleIncrementSubmit = () => {
+    const value = parseInt(incrementValue, 10);
+    if (value > 0) {
+      onIncrement(goal.id, value);
+    }
+    setShowIncrementInput(false);
+    setIncrementValue('');
+  };
+
+  const handleIncrementCancel = () => {
+    setShowIncrementInput(false);
+    setIncrementValue('');
+  };
+
+  const handleIncrementKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleIncrementSubmit();
+    } else if (e.key === 'Escape') {
+      handleIncrementCancel();
     }
   };
 
@@ -300,24 +333,50 @@ export function GoalCard({ goal, onIncrement, onDelete, onEdit }: GoalCardProps)
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div className="flex-1 relative h-1.5 rounded-full bg-red-400 dark:bg-red-900 overflow-hidden">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out bg-emerald-500"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <button
-                  onClick={handleIncrement}
-                  disabled={isCompleted}
-                  className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-all ${
-                    isCompleted
-                      ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-400 cursor-not-allowed'
-                      : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md hover:shadow-lg active:scale-95'
-                  }`}
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
+                {showIncrementInput ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      ref={incrementInputRef}
+                      type="number"
+                      value={incrementValue}
+                      onChange={(e) => setIncrementValue(e.target.value)}
+                      onKeyDown={handleIncrementKeyDown}
+                      className="w-16 h-8 px-2 text-sm text-center rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      min={1}
+                    />
+                    <button
+                      onClick={handleIncrementSubmit}
+                      className="h-8 w-8 rounded-full flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white transition-all"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={handleIncrementCancel}
+                      className="h-8 w-8 rounded-full flex items-center justify-center bg-zinc-300 dark:bg-zinc-600 hover:bg-zinc-400 dark:hover:bg-zinc-500 text-zinc-700 dark:text-zinc-200 transition-all"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handlePlusClick}
+                    disabled={isCompleted}
+                    className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-all ${
+                      isCompleted
+                        ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-400 cursor-not-allowed'
+                        : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md hover:shadow-lg active:scale-95'
+                    }`}
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
